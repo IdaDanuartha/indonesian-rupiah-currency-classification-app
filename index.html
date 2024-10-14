@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teachable Machine Image Model</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+        }
+        h1 {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #webcam-container, #label-container {
+            margin-top: 20px;
+        }
+
+        /* Style for output bars */
+        .prediction-bar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .prediction-label {
+            flex: 1;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .progress-container {
+            flex: 2;
+            background-color: #e0e0e0;
+            border-radius: 20px;
+            overflow: hidden;
+            height: 20px;
+            margin-left: 10px;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            border-radius: 20px;
+            background-color: #4285F4; /* Default color */
+            width: 0;
+        }
+
+        /* Different colors for bars */
+        .bar-1,
+        .bar-2,
+        .bar-3,
+        .bar-4,
+        .bar-5,
+        .bar-person,
+        .bar-background { background-color: #4285F4; }
+
+        .progress-percentage {
+            position: absolute;
+            right: 10px;
+            top: 2px;
+            font-size: 12px;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Indonesian Rupiah Currency Classification</h1>
+    <button type="button" onclick="init()">Start</button>
+    <div id="webcam-container"></div>
+    <div id="label-container"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+<script type="text/javascript">
+    const URL = "https://teachablemachine.withgoogle.com/models/UJavjD79y/";
+
+    let model, webcam, labelContainer, maxPredictions;
+
+    let isInitialized = false;
+
+    async function init() {
+        if (isInitialized) return;  
+
+        const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
+
+        model = await tmImage.load(modelURL, metadataURL);
+        maxPredictions = model.getTotalClasses();
+
+        const flip = true;
+        webcam = new tmImage.Webcam(200, 200, flip);
+        await webcam.setup();
+        await webcam.play();
+        window.requestAnimationFrame(loop);
+
+        document.getElementById("webcam-container").appendChild(webcam.canvas);
+        labelContainer = document.getElementById("label-container");
+        for (let i = 0; i < maxPredictions; i++) {
+            const div = document.createElement("div");
+            div.className = "prediction-bar";
+
+            const label = document.createElement("span");
+            label.className = "prediction-label";
+            div.appendChild(label);
+
+            const progressContainer = document.createElement("div");
+            progressContainer.className = "progress-container";
+
+            const progressBar = document.createElement("div");
+            progressBar.className = "progress-bar";
+            progressContainer.appendChild(progressBar);
+
+            const percentage = document.createElement("span");
+            percentage.className = "progress-percentage";
+            progressBar.appendChild(percentage);
+
+            div.appendChild(progressContainer);
+            labelContainer.appendChild(div);
+        }
+
+        isInitialized = true;
+    }
+
+    async function loop() {
+        webcam.update();
+        await predict();
+        window.requestAnimationFrame(loop);
+    }
+
+    async function predict() {
+        const prediction = await model.predict(webcam.canvas);
+        for (let i = 0; i < maxPredictions; i++) {
+            const classPrediction = prediction[i].className + ": " + prediction[i].probability.toFixed(2);
+            const labelElement = labelContainer.childNodes[i].querySelector('.prediction-label');
+            const progressBar = labelContainer.childNodes[i].querySelector('.progress-bar');
+            const percentage = labelContainer.childNodes[i].querySelector('.progress-percentage');
+
+            labelElement.innerHTML = prediction[i].className;
+            progressBar.style.width = (prediction[i].probability * 100) + "%";
+            percentage.innerHTML = (prediction[i].probability * 100).toFixed(0) + "%";
+
+            // Set different colors for specific classes
+            if (prediction[i].className.includes("Rp1")) {
+                progressBar.classList.add("bar-1");
+            } else if (prediction[i].className.includes("Rp2")) {
+                progressBar.classList.add("bar-2");
+            } else if (prediction[i].className.includes("Rp5")) {
+                progressBar.classList.add("bar-3");
+            } else if (prediction[i].className.includes("Rp10")) {
+                progressBar.classList.add("bar-4");
+            } else if (prediction[i].className.includes("Person")) {
+                progressBar.classList.add("bar-person");
+            } else if (prediction[i].className.includes("Background")) {
+                progressBar.classList.add("bar-background");
+            }
+        }
+    }
+</script>
+
+</body>
+</html>
